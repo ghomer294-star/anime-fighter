@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anime Fighters</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  margin: 0;
+  background: #080812;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  overflow: hidden;
+}
+
+h1 {
+  margin: 10px;
+}
+
+canvas {
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  border: 3px solid #444;
+  background: #18233a;
+}
+
+.controls {
+  max-width: 900px;
+  margin: 8px auto;
+  display: flex;
+  justify-content: space-between;
+  padding: 5px;
+}
+
+button {
+  width: 65px;
+  height: 55px;
+  margin: 3px;
+  border: 2px solid white;
+  border-radius: 15px;
+  background: #202040;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+button:active {
+  transform: scale(.92);
+  background: #5030a0;
+}
+
+.attack {
+  background: #9b2020;
+}
+
+.special {
+  background: #20209b;
+}
+</style>
+</head>
+
+<body>
+
+<h1>⚡ ANIME FIGHTERS ⚡</h1>
+
+<canvas id="game" width="900" height="500"></canvas>
+
+<div class="controls">
+
+<div>
+<button id="left">◀</button>
+<button id="right">▶</button>
+<button id="jump">⬆</button>
+</div>
+
+<div>
+<button class="attack" id="punch">👊</button>
+<button class="attack" id="kick">🦵</button>
+<button class="special" id="special">⚡</button>
+</div>
+
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {
+  x: 180,
+  y: 360,
+  w: 55,
+  h: 100,
+  hp: 100,
+  vx: 0,
+  vy: 0,
+  attacking: false,
+  special: false
+};
+
+let enemy = {
+  x: 650,
+  y: 360,
+  w: 55,
+  h: 100,
+  hp: 100,
+  attacking: false
+};
+
+let keys = {};
+
+document.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+function button(id, key) {
+
+  const b = document.getElementById(id);
+
+  b.addEventListener("touchstart", e => {
+    e.preventDefault();
+    keys[key] = true;
+  });
+
+  b.addEventListener("touchend", e => {
+    e.preventDefault();
+    keys[key] = false;
+  });
+
+  b.addEventListener("mousedown", () => {
+    keys[key] = true;
+  });
+
+  b.addEventListener("mouseup", () => {
+    keys[key] = false;
+  });
+}
+
+button("left", "a");
+button("right", "d");
+button("jump", "w");
+button("punch", "j");
+button("kick", "k");
+button("special", "l");
+
+function drawBackground() {
+
+  let gradient = ctx.createLinearGradient(0,0,0,500);
+
+  gradient.addColorStop(0,"#111b3b");
+  gradient.addColorStop(1,"#263d54");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0,0,900,500);
+
+  ctx.fillStyle = "#eeeeff";
+
+  ctx.beginPath();
+  ctx.arc(700,90,45,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "#26312d";
+  ctx.fillRect(0,410,900,90);
+
+  ctx.fillStyle = "#101827";
+
+  ctx.beginPath();
+
+  ctx.moveTo(0,410);
+  ctx.lineTo(180,230);
+  ctx.lineTo(350,410);
+  ctx.lineTo(520,250);
+  ctx.lineTo(750,410);
+  ctx.lineTo(900,270);
+  ctx.lineTo(900,410);
+
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFighter(f, type, attack) {
+
+  let x = f.x;
+  let y = f.y;
+
+  ctx.save();
+
+  ctx.fillStyle = "rgba(0,0,0,.4)";
+
+  ctx.beginPath();
+  ctx.ellipse(x+27,y+100,35,8,0,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.strokeStyle =
+    type === "player" ? "#267cff" : "#ff3333";
+
+  ctx.lineWidth = 12;
+
+  ctx.beginPath();
+
+  ctx.moveTo(x+20,y+70);
+  ctx.lineTo(x+12,y+100);
+
+  ctx.moveTo(x+35,y+70);
+  ctx.lineTo(x+45,y+100);
+
+  ctx.stroke();
+
+  ctx.fillStyle =
+    type === "player" ? "#174d9b" : "#9b2020";
+
+  ctx.fillRect(x+8,y+35,40,45);
+
+  ctx.fillStyle = "#f0bd91";
+
+  ctx.beginPath();
+  ctx.arc(x+28,y+20,20,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle =
+    type === "player" ? "#101827" : "#321010";
+
+  ctx.beginPath();
+
+  ctx.moveTo(x+8,y+20);
+  ctx.lineTo(x+12,y-5);
+  ctx.lineTo(x+23,y+8);
+  ctx.lineTo(x+30,y-8);
+  ctx.lineTo(x+38,y+8);
+  ctx.lineTo(x+50,y-2);
+  ctx.lineTo(x+48,y+25);
+
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#111";
+
+  ctx.fillRect(x+18,y+18,5,4);
+  ctx.fillRect(x+34,y+18,5,4);
+
+  if (attack) {
+
+    ctx.strokeStyle =
+      type === "player" ? "#267cff" : "#ff3333";
+
+    ctx.lineWidth = 13;
+
+    ctx.beginPath();
+
+    if (type === "player") {
+      ctx.moveTo(x+40,y+45);
+      ctx.lineTo(x+85,y+40);
+    } else {
+      ctx.moveTo(x+8,y+45);
+      ctx.lineTo(x-35,y+40);
+    }
+
+    ctx.stroke();
+  }
+
+  if (f.special) {
+
+    ctx.strokeStyle = "#66ccff";
+    ctx.lineWidth = 5;
+
+    ctx.beginPath();
+
+    ctx.moveTo(x+50,y+35);
+    ctx.lineTo(x+80,y+15);
+    ctx.lineTo(x+65,y+35);
+    ctx.lineTo(x+100,y+10);
+
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function hitTest(a,b) {
+
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+}
+
+function attack() {
+
+  if (player.attacking) return;
+
+  player.attacking = true;
+
+  setTimeout(() => {
+
+    if (hitTest(player,enemy)) {
+      enemy.hp -= 8;
+    }
+
+    player.attacking = false;
+
+  },180);
+}
+
+function specialAttack() {
+
+  if (player.special) return;
+
+  player.special = true;
+
+  setTimeout(() => {
+
+    if (Math.abs(player.x-enemy.x) < 220) {
+      enemy.hp -= 20;
+    }
+
+    player.special = false;
+
+  },300);
+}
+
+function update() {
+
+  player.vx = 0;
+
+  if (keys["a"]) player.vx = -5;
+  if (keys["d"]) player.vx = 5;
+
+  if (keys["w"] && player.y >= 360) {
+    player.vy = -13;
+  }
+
+  player.x += player.vx;
+
+  player.vy += .6;
+  player.y += player.vy;
+
+  if (player.y > 360) {
+    player.y = 360;
+    player.vy = 0;
+  }
+
+  if (keys["j"]) {
